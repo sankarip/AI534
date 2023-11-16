@@ -4,15 +4,16 @@ from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import MinMaxScaler
 import numpy as np
 from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_log_error
 
 def loadData():
-    file_name = 'C:/Users/15418/Downloads/hw3-data/hw2-data/my_train.csv'
+    file_name = 'C:/Users/psankari/Downloads/hw3-data/hw2-data/my_train.csv'
     # load the training data
     data = pd.read_csv(file_name)
     return data
 
 def loadDevData():
-    file_name = 'C:/Users/15418/Downloads/hw3-data/hw2-data/my_dev.csv'
+    file_name = 'C:/Users/psankari/Downloads/hw3-data/hw2-data/my_dev.csv'
     # load the training data
     data = pd.read_csv(file_name)
     return data
@@ -73,6 +74,7 @@ def linearRegressionPart2():
         errorSum=errorSum+rmsle
     finalRMSLE=(errorSum/len(devTargets))**0.5
     print('RMSLE: ', finalRMSLE)
+    print((mean_squared_log_error(devTargets, predictions))**0.5)
     coefs=reg.coef_
     #empty array to store coefficients and indexes
     coefAndIndex=[]
@@ -145,16 +147,16 @@ def smartBinarization():
         else:
             categorical.append(headers[i])
     devData=devData.astype(str)
-    #errors become smaller but still very big if uncommented
     data = data.astype(str)
     #print the categories to make sure they make sense
     print("numeric: ", numeric)
     print("categorical: ", categorical)
-    #try getting rid of those three categories
     num_processor = MinMaxScaler(feature_range=(0, 1))
     cat_processor = OneHotEncoder(sparse=False, handle_unknown='ignore')
     preprocessor = ColumnTransformer([('num', num_processor, numeric), ('cat', cat_processor,categorical)])
     preprocessor.fit(data)
+    features = preprocessor.get_feature_names_out()
+    #print(features)
     binary_data=preprocessor.transform(data)
     dev_binary_data=preprocessor.transform(devData)
     #commented out, but lets you look at the binarized data side by side
@@ -162,7 +164,9 @@ def smartBinarization():
     #    print("train: ",binary_data[0][i], " dev:",dev_binary_data[0][i])
     reg = LinearRegression().fit(binary_data, targets)
     predictions=reg.predict(dev_binary_data)
-    #print(predictions)
+    print(predictions)
+    #look at most negative features to figure this out
+    print(devData.iloc[34])
     #start a count for RMSLE
     errorSum=0
     for i in range(len(devTargets)):
@@ -170,8 +174,9 @@ def smartBinarization():
         prediction=predictions[i]
         #compare the targets and predictions
         #print(target, prediction)
-        rmsle=(np.log(prediction+1)-np.log(target+1))**2
-        errorSum=errorSum+rmsle
+        if prediction>0:
+            rmsle=(np.log(prediction+1)-np.log(target+1))**2
+            errorSum=errorSum+rmsle
     finalRMSLE=(errorSum/len(devTargets))**0.5
     print('RMSLE: ', finalRMSLE)
     coefs=reg.coef_
